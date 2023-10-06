@@ -49,10 +49,12 @@ class Table:
     def solve(self):
         n = max(len(row) for row in self.items)
         solution = [None for _ in range(n)]
-        (_, w) = self.win.getyx()
+        (_, w) = self.win.getmaxyx()
 
         # Horizontal space not taken by frames
         leftover = w - n - 1
+        self.win.addstr(f"w = {w} ")
+        self.win.addstr(f"leftover = {leftover} ")
 
         # Allocate widths
         for i in range(n):
@@ -64,6 +66,7 @@ class Table:
 
         # Allocate weights
         space = leftover
+        self.win.addstr(f"space = {space}\n")
         for i in range(n):
             w = self.constraints.get(i)
             if w is not None and w["type"] == "weight":
@@ -71,17 +74,21 @@ class Table:
                 leftover -= solution[i]
 
         # Allocated unconstrained weights
-        unconstrained_col_width = leftover // solution.count(None)
-        for i in range(n):
-            w = self.constraints.get(i)
-            if w is None:
-                solution[i] = unconstrained_col_width
-                leftover -= solution[i]
+        self.win.addstr(f"leftover = {leftover}\n")
+        num_unconstrained_cols = solution.count(None)
+        if num_unconstrained_cols != 0:
+            unconstrained_col_width = floor(leftover / num_unconstrained_cols)
+            for i in range(n):
+                w = self.constraints.get(i)
+                if w is None:
+                    solution[i] = unconstrained_col_width
+                    leftover -= solution[i]
 
         # Donate any leftover to the first weighted column
         for i in range(n):
             w = self.constraints.get(i)
             if w is None or w["type"] == "weight":
+                self.win.addstr(f"donatee = {i}\n")
                 solution[i] += leftover
                 break
 
@@ -91,31 +98,27 @@ class Table:
 
         return solution
 
-    def scroll_down(self):
-        pass
-
-    def scroll_up(self):
-        pass
-
-    def scroll_top(self):
-        pass
-
-    def scroll_bottom(self):
-        pass
-
     def draw(self):
-        (h, w) = self.win.getyx()
+        # self.win.clear()
+        solution = self.solve()
+        self.win.addstr("\n")
+        self.win.addstr(f"{solution}\n")
+        self.win.addstr("*")
+        for w in solution:
+            self.win.addstr(" " * w)
+            self.win.addstr("*")
+        self.win.refresh()
 
 def main(stdscr):
-    scr1 = curses.newwin(14, 14)
-
-    stdscr.clear()
-    stdscr.border()
-    stdscr.refresh()
-
-    scr1.clear()
-    scr1.border()
-    scr1.refresh()
+    table = Table(stdscr)
+    table.items = [
+        [1, 2, 3],
+        [4, 5, 6],
+    ]
+    table.set_width(0, 10)
+    table.set_weight(1, 0.3)
+    table.set_weight(2, 0.7)
+    table.draw()
 
     stdscr.getch()
 
